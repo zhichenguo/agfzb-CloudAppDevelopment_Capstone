@@ -11,6 +11,7 @@ import logging
 import json
 
 from .restapi import get_dealer_reviews_from_cf, get_dealers_from_cf, post_request
+from .models import CarModel
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -86,11 +87,12 @@ def get_dealerships(request):
         url = "https://01945f64.us-south.apigw.appdomain.cloud/api/dealership"
         # Get dealers from the URL
         dealerships = get_dealers_from_cf(url)
-        # Concat all dealer's short name
-        dealer_names = ' '.join([dealer.short_name for dealer in dealerships])
-        context["dealer_names"] = dealer_names
-        # Return a list of dealer short name
+        # # Concat all dealer's short name
+        # dealer_names = ' '.join([dealer.short_name for dealer in dealerships])
+        # context["dealer_names"] = dealer_names
+        # # Return a list of dealer short name
         # return HttpResponse(dealer_names)
+        context["dealership_list"] = dealerships
         return render(request, 'djangoapp/index.html', context)
 
 
@@ -98,39 +100,57 @@ def get_dealerships(request):
 def get_dealer_details(request, dealer_id):
     context = {}
     if request.method == "GET":
-        url = "https://01945f64.us-south.apigw.appdomain.cloud/api/review"
+        url_review = "https://01945f64.us-south.apigw.appdomain.cloud/api/review"
+        url_dealer = "https://01945f64.us-south.apigw.appdomain.cloud/api/dealership"
         # Get reviews from the URL
-        reviews = get_dealer_reviews_from_cf(url, dealer_id)
-        # Concat all review's name
-        review_names = ' '.join([review.name for review in reviews])
-        review_sentiments = ' '.join([review.sentiment for review in reviews])
-        context["review_names"] = review_names
-        context["review_sentiments"] = review_sentiments
-        # Return a list of dealer short name
-        return HttpResponse(review_sentiments)
-        # return render(request, 'djangoapp/index.html', context)
+        reviews = get_dealer_reviews_from_cf(url_review, dealer_id)
+        dealerships = get_dealers_from_cf(url_dealer)
+        dealer = [d for d in dealerships if d.id == dealer_id]
+        # # Concat all review's name
+        # review_names = ' '.join([review.name for review in reviews])
+        # review_sentiments = ' '.join([review.sentiment for review in reviews])
+        # context["review_names"] = review_names
+        # context["review_sentiments"] = review_sentiments
+        # # Return a list of dealer short name
+        # return HttpResponse(review_sentiments)
+        context["reviews"] = reviews
+        context["dealer"] = dealer[0]
+        return render(request, 'djangoapp/dealer_details.html', context)
 
 
 # Create a `add_review` view to submit a review
 def add_review(request, dealer_id):
-    if request.user.is_authenticated:
-        review = {}
-        review["time"] = datetime.utcnow().isoformat()
-        review["name"] = "John"
-        review["purchase"] = True
-        review["purchase_date"] = "07/20/2022"
-        review["car_make"] = "Ford"
-        review["car_model"] = "F150"
-        review["car_year"] = 2022
-        review["review"] = "This is a great car dealer"
-        review["dealership"] = dealer_id
+    context = {}
+    if request.method == "POST":
+        if request.user.is_authenticated:
+            review = {}
+            review["time"] = datetime.utcnow().isoformat()
+            review["name"] = "John"
+            review["purchase"] = True
+            review["purchase_date"] = "07/20/2022"
+            review["car_make"] = "Ford"
+            review["car_model"] = "F150"
+            review["car_year"] = 2022
+            review["review"] = "This is a great car dealer"
+            review["dealership"] = dealer_id
 
-        url = "https://01945f64.us-south.apigw.appdomain.cloud/api/review"
-        response = post_request(url, review)
-        if "ok" in response.keys() and response["ok"]:
-            return HttpResponse("Review added!")
+            url = "https://01945f64.us-south.apigw.appdomain.cloud/api/review"
+            response = post_request(url, review)
+            if "ok" in response.keys() and response["ok"]:
+                return HttpResponse("Review added!")
+            else:
+                return HttpResponse("Something Wrong with submission")
+
         else:
-            return HttpResponse("Something Wrong with submission")
-
+            return HttpResponse("Please Login to submit review")
+    
     else:
-        return HttpResponse("Please Login to submit review")
+        url_dealer = "https://01945f64.us-south.apigw.appdomain.cloud/api/dealership"
+        dealerships = get_dealers_from_cf(url_dealer)
+        dealer = [d for d in dealerships if d.id == dealer_id]
+        context["dealer"] = dealer[0]
+        cars = CarModel.objects.filter(
+            dealer_id=dealer_id
+        )
+        context["cars"] = cars
+        return render(request, 'djangoapp/add_review.html', context)
