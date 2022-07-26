@@ -123,9 +123,6 @@ def add_review(request, dealer_id):
     context = {}
     if request.method == "POST":
         if request.user.is_authenticated:
-            from pprint import pprint
-            pprint(request.POST)
-            # pprint(request.POST["purchasecheck"])
             review = {}
             review["time"] = datetime.utcnow().isoformat()
             review["name"] = request.user.username
@@ -151,11 +148,6 @@ def add_review(request, dealer_id):
             review["dealership"] = dealer_id
 
             url = "https://01945f64.us-south.apigw.appdomain.cloud/api/review"
-            
-            # print(review)
-            # messages.success(request, "Done")
-            # return redirect("djangoapp:add_review", dealer_id=dealer_id)
-
             response = post_request(url, review)
             if "ok" in response.keys() and response["ok"]:
                 messages.success(request, "Thanks for your review")
