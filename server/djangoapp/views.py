@@ -123,26 +123,50 @@ def add_review(request, dealer_id):
     context = {}
     if request.method == "POST":
         if request.user.is_authenticated:
+            from pprint import pprint
+            pprint(request.POST)
+            # pprint(request.POST["purchasecheck"])
             review = {}
             review["time"] = datetime.utcnow().isoformat()
-            review["name"] = "John"
-            review["purchase"] = True
-            review["purchase_date"] = "07/20/2022"
-            review["car_make"] = "Ford"
-            review["car_model"] = "F150"
-            review["car_year"] = 2022
-            review["review"] = "This is a great car dealer"
+            review["name"] = request.user.username
+            if "purchasecheck" in request.POST.keys() and request.POST["purchasecheck"] == "on":
+                review["purchase"] = True
+                if "purchasedate" in request.POST.keys() and request.POST["purchasedate"] != "":
+                    review["purchase_date"] = request.POST["purchasedate"]
+                if "car" in request.POST.keys() and request.POST["car"] != "" and request.POST["car"].isdigit():
+                    car_uid = int(request.POST["car"])
+                    car_model = CarModel.objects.get(uid=car_uid)
+                    review["car_make"] = car_model.car_make.name
+                    review["car_model"] = car_model.name
+                    review["car_year"] = car_model.year.strftime("%Y")
+            else:
+                review["purchase"] = False
+            
+            if request.POST["content"] == "":
+                messages.warning(request, "Please enter the review content.")
+                return redirect("djangoapp:add_review", dealer_id=dealer_id)
+            else:            
+                review["review"] = request.POST["content"]
+
             review["dealership"] = dealer_id
 
             url = "https://01945f64.us-south.apigw.appdomain.cloud/api/review"
+            
+            # print(review)
+            # messages.success(request, "Done")
+            # return redirect("djangoapp:add_review", dealer_id=dealer_id)
+
             response = post_request(url, review)
             if "ok" in response.keys() and response["ok"]:
-                return HttpResponse("Review added!")
+                messages.success(request, "Thanks for your review")
+                return redirect("djangoapp:dealer_details", dealer_id=dealer_id)
             else:
-                return HttpResponse("Something Wrong with submission")
+                messages.error(request, "Something went wrong! Please try again.")
+                return redirect("djangoapp:add_review", dealer_id=dealer_id)
 
         else:
-            return HttpResponse("Please Login to submit review")
+            messages.warning(request, "Please login to submit review.")
+            return redirect("djangoapp:add_review", dealer_id=dealer_id)
     
     else:
         url_dealer = "https://01945f64.us-south.apigw.appdomain.cloud/api/dealership"

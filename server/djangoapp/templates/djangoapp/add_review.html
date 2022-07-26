@@ -11,10 +11,23 @@
 
 </head>
     <body>
+        <div class="text-center mt-5">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
         <h3 class="text-center">Add a review about {{ dealer.full_name }}</h3>
         <!--Add review form here -->
         <div class="container">
             <form action="{% url 'djangoapp:add_review' dealer.id %}" method="post">        
+                {% csrf_token %}
                 <div class="form-group">
                     <label for="content" class="h5">Enter the review content</label>
                     <textarea class="form-control" id="content" name="content" rows="2" required></textarea>
@@ -28,9 +41,10 @@
                 </div>
                 <div class="form-group">
                     <label for="car" class="h5">Select Your Car (Model-Make-Year): </label>
-                    <select name="car" id="car" class="form-select" required>
+                    <select name="car" id="car" class="form-select">                        
+                        <option value="">--------</option>
                         {% for car in cars %}
-                            <option selected value={{car.id}}>{{car.name}}-{{car.car_make.name}}-{{ car.year|date:"Y" }}</option>
+                            <option value={{car.uid}}>{{car.name}}-{{car.car_make.name}}-{{ car.year|date:"Y" }}</option>
                         {% endfor %}
                     </select>
                 </div>
